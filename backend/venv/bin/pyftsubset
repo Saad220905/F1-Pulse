@@ -1,0 +1,7 @@
+#!/Users/saadkashif/Documents/Hunter_stuff/Fall2025/DS-FRI-1230/f1-pulse/backend/venv/bin/python
+import sys
+from fontTools.subset import main
+if __name__ == '__main__':
+    if sys.argv[0].endswith('.exe'):
+        sys.argv[0] = sys.argv[0][:-4]
+    sys.exit(main())
