@@ -126,7 +126,7 @@ export default function WhatIsF1() {
                     <div>
                       <h4 className="font-semibold text-gray-900 dark:text-white mb-1">Practice Sessions (Friday & Saturday)</h4>
                       <p className="text-gray-700 dark:text-gray-300 mb-2">
-                        Teams test their cars and gather data on Friday and Saturday morning to optimize performance. 
+                        Teams test their cars and gather data on Friday and Saturday morning to optimize performance.
                         There are typically 3 practice sessions: FP1 and FP2 on Friday, FP3 on Saturday morning.
                       </p>
                       <p className="text-sm text-gray-600 dark:text-gray-400">
@@ -630,27 +630,27 @@ export default function WhatIsF1() {
                   <div>
                     <h4 className="font-semibold text-gray-900 dark:text-white mb-3">Factory Team (Headquarters)</h4>
                     <ul className="space-y-2 text-sm text-gray-700 dark:text-gray-300">
-                      <li className="flex items-start">
-                        <span className="text-red-600 mr-2">•</span>
+                  <li className="flex items-start">
+                    <span className="text-red-600 mr-2">•</span>
                         <span><strong>Design Engineers:</strong> Design car components using advanced CAD software</span>
-                      </li>
-                      <li className="flex items-start">
-                        <span className="text-red-600 mr-2">•</span>
+                  </li>
+                  <li className="flex items-start">
+                    <span className="text-red-600 mr-2">•</span>
                         <span><strong>Aerodynamics Team:</strong> Optimize airflow using wind tunnels and CFD</span>
-                      </li>
-                      <li className="flex items-start">
-                        <span className="text-red-600 mr-2">•</span>
+                  </li>
+                  <li className="flex items-start">
+                    <span className="text-red-600 mr-2">•</span>
                         <span><strong>Manufacturing:</strong> Build car parts using carbon fiber and advanced materials</span>
-                      </li>
-                      <li className="flex items-start">
-                        <span className="text-red-600 mr-2">•</span>
+                  </li>
+                  <li className="flex items-start">
+                    <span className="text-red-600 mr-2">•</span>
                         <span><strong>Data Analysts:</strong> Process telemetry data to improve performance</span>
-                      </li>
-                      <li className="flex items-start">
-                        <span className="text-red-600 mr-2">•</span>
+                  </li>
+                  <li className="flex items-start">
+                    <span className="text-red-600 mr-2">•</span>
                         <span><strong>Management:</strong> Team principals, technical directors, and executives</span>
-                      </li>
-                    </ul>
+                  </li>
+                </ul>
                   </div>
                 </div>
               </div>
@@ -794,16 +794,16 @@ export default function WhatIsF1() {
                 </p>
                 <div className="grid md:grid-cols-2 gap-4">
                   <ul className="space-y-2 text-gray-700 dark:text-gray-300">
-                    <li className="flex items-start">
-                      <span className="text-red-600 mr-2">✓</span>
+                  <li className="flex items-start">
+                    <span className="text-red-600 mr-2">✓</span>
                       <span><strong>Carbon fiber construction:</strong> Lighter, stronger materials now used in high-end and increasingly mainstream cars</span>
-                    </li>
-                    <li className="flex items-start">
-                      <span className="text-red-600 mr-2">✓</span>
+                  </li>
+                  <li className="flex items-start">
+                    <span className="text-red-600 mr-2">✓</span>
                       <span><strong>Hybrid powertrains:</strong> F1&apos;s energy recovery systems inspired modern hybrid and electric vehicles</span>
-                    </li>
-                    <li className="flex items-start">
-                      <span className="text-red-600 mr-2">✓</span>
+                  </li>
+                  <li className="flex items-start">
+                    <span className="text-red-600 mr-2">✓</span>
                       <span><strong>Advanced aerodynamics:</strong> Better fuel economy through improved airflow management</span>
                     </li>
                   </ul>
@@ -811,16 +811,16 @@ export default function WhatIsF1() {
                     <li className="flex items-start">
                       <span className="text-red-600 mr-2">✓</span>
                       <span><strong>Energy recovery systems:</strong> Regenerative braking technology in modern hybrids and EVs</span>
-                    </li>
-                    <li className="flex items-start">
-                      <span className="text-red-600 mr-2">✓</span>
+                  </li>
+                  <li className="flex items-start">
+                    <span className="text-red-600 mr-2">✓</span>
                       <span><strong>Safety innovations:</strong> Improved crash protection, seatbelt technology, and driver safety systems</span>
-                    </li>
-                    <li className="flex items-start">
-                      <span className="text-red-600 mr-2">✓</span>
+                  </li>
+                  <li className="flex items-start">
+                    <span className="text-red-600 mr-2">✓</span>
                       <span><strong>Telemetry and diagnostics:</strong> Advanced monitoring systems in modern vehicles</span>
-                    </li>
-                  </ul>
+                  </li>
+                </ul>
                 </div>
               </div>
 

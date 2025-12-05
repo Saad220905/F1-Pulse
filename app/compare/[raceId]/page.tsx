@@ -60,7 +60,7 @@ export default function ComparePage() {
         const result = await response.json();
         // Validate and set data
         if (result && result.predictions) {
-          setData(result);
+        setData(result);
         } else {
           setError('Invalid comparison data received');
         }
@@ -103,14 +103,14 @@ export default function ComparePage() {
         .map((pred) => {
           if (!pred) return null;
           const actual = data.actual_results?.find((a) => a && a.driverRef === pred.driverRef);
-          return actual
-            ? {
-                driver: pred.driverRef,
-                predicted: pred.predicted_position,
-                actual: actual.finish_position,
-                error: Math.abs(pred.predicted_position - actual.finish_position),
-              }
-            : null;
+        return actual
+          ? {
+              driver: pred.driverRef,
+              predicted: pred.predicted_position,
+              actual: actual.finish_position,
+              error: Math.abs(pred.predicted_position - actual.finish_position),
+            }
+          : null;
         })
         .filter((item): item is NonNullable<typeof item> => item !== null)
     : [];
@@ -121,16 +121,16 @@ export default function ComparePage() {
         .map((pred) => {
           if (!pred) return null;
           const actual = data.actual_results?.find((a) => a && a.driverRef === pred.driverRef);
-          if (!actual) return null;
-          const error = pred.predicted_position - actual.finish_position;
-          return {
-            driver: pred.driverRef,
-            team: pred.team,
-            predicted: pred.predicted_position,
-            actual: actual.finish_position,
-            error,
-            absError: Math.abs(error),
-          };
+        if (!actual) return null;
+        const error = pred.predicted_position - actual.finish_position;
+        return {
+          driver: pred.driverRef,
+          team: pred.team,
+          predicted: pred.predicted_position,
+          actual: actual.finish_position,
+          error,
+          absError: Math.abs(error),
+        };
         })
         .filter((item): item is NonNullable<typeof item> => item !== null)
         .sort((a, b) => a.actual - b.actual)

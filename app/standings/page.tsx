@@ -91,13 +91,20 @@ export default function StandingsPage() {
   }));
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-red-50 via-white to-red-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <div className="container mx-auto px-4 py-12 max-w-7xl">
         {/* Header */}
-        <div className="text-center mb-12 animate-fadeIn">
-          <h1 className="text-5xl md:text-6xl font-bold text-gray-900 dark:text-white mb-4">
-            🏆 Championship Standings
+        <div className="text-center mb-12">
+          <h1 className="text-4xl font-semibold text-gray-900 dark:text-white mb-3">
+            Predicted Championship Standings
           </h1>
+          <div className="mt-3 mb-6">
+            <div className="inline-flex items-center px-4 py-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md">
+              <span className="text-red-800 dark:text-red-200 text-sm font-medium">
+                Powered by ML predictions
+              </span>
+            </div>
+          </div>
           <div className="flex items-center justify-center gap-4 mt-6">
             <select
               value={year}
@@ -118,7 +125,7 @@ export default function StandingsPage() {
             onClick={() => setActiveTab('drivers')}
             className={`px-6 py-3 rounded-lg font-semibold transition-all ${
               activeTab === 'drivers'
-                ? 'bg-red-600 text-white shadow-lg'
+                ? 'bg-red-600 text-white shadow-sm'
                 : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
             }`}
           >
@@ -128,7 +135,7 @@ export default function StandingsPage() {
             onClick={() => setActiveTab('teams')}
             className={`px-6 py-3 rounded-lg font-semibold transition-all ${
               activeTab === 'teams'
-                ? 'bg-red-600 text-white shadow-lg'
+                ? 'bg-red-600 text-white shadow-sm'
                 : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
             }`}
           >
@@ -139,10 +146,11 @@ export default function StandingsPage() {
         {/* Charts */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
           {/* Points Chart */}
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6">
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">
-              {activeTab === 'drivers' ? 'Driver Points' : 'Team Points'}
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
+              {activeTab === 'drivers' ? 'Predicted Driver Points' : 'Predicted Team Points'}
             </h2>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-6">Based on ML model predictions</p>
             <ResponsiveContainer width="100%" height={400}>
               {activeTab === 'drivers' ? (
                 <BarChart data={driverChartData}>
@@ -165,10 +173,11 @@ export default function StandingsPage() {
           </div>
 
           {/* Wins Chart */}
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6">
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">
-              {activeTab === 'drivers' ? 'Driver Wins' : 'Team Wins'}
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
+              {activeTab === 'drivers' ? 'Predicted Driver Wins' : 'Predicted Team Wins'}
             </h2>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-6">Based on ML model predictions</p>
             <ResponsiveContainer width="100%" height={400}>
               {activeTab === 'drivers' ? (
                 <BarChart data={driverChartData}>
@@ -192,10 +201,15 @@ export default function StandingsPage() {
         </div>
 
         {/* Standings Table */}
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">
-            Full {activeTab === 'drivers' ? 'Driver' : 'Team'} Standings
-          </h2>
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                Predicted {activeTab === 'drivers' ? 'Driver' : 'Team'} Standings
+              </h2>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Based on ML model predictions</p>
+            </div>
+          </div>
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
@@ -204,17 +218,17 @@ export default function StandingsPage() {
                   {activeTab === 'drivers' ? (
                     <>
                       <th className="text-left py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">Driver</th>
-                      <th className="text-center py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">Points</th>
-                      <th className="text-center py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">Wins</th>
-                      <th className="text-center py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">Podiums</th>
+                      <th className="text-center py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">Predicted Points</th>
+                      <th className="text-center py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">Predicted Wins</th>
+                      <th className="text-center py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">Predicted Podiums</th>
                       <th className="text-center py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">Races</th>
                     </>
                   ) : (
                     <>
                       <th className="text-left py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">Team</th>
-                      <th className="text-center py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">Points</th>
-                      <th className="text-center py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">Wins</th>
-                      <th className="text-center py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">Podiums</th>
+                      <th className="text-center py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">Predicted Points</th>
+                      <th className="text-center py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">Predicted Wins</th>
+                      <th className="text-center py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">Predicted Podiums</th>
                     </>
                   )}
                 </tr>
@@ -232,7 +246,7 @@ export default function StandingsPage() {
                         {index === 0 && <Trophy className="w-5 h-5 text-yellow-500 mr-2" />}
                         {index === 1 && <Award className="w-5 h-5 text-gray-400 mr-2" />}
                         {index === 2 && <Award className="w-5 h-5 text-orange-400 mr-2" />}
-                        <span className="font-bold text-gray-900 dark:text-white">{index + 1}</span>
+                        <span className="font-semibold text-gray-900 dark:text-white">{index + 1}</span>
                       </div>
                     </td>
                     {activeTab === 'drivers' ? (
@@ -261,7 +275,7 @@ export default function StandingsPage() {
                           </div>
                         </td>
                         <td className="py-4 px-4 text-center">
-                          <span className="font-bold text-red-600 dark:text-red-400">
+                          <span className="font-semibold text-red-600 dark:text-red-400">
                             {(item as DriverStanding).points}
                           </span>
                         </td>
@@ -301,7 +315,7 @@ export default function StandingsPage() {
                           </div>
                         </td>
                         <td className="py-4 px-4 text-center">
-                          <span className="font-bold text-blue-600 dark:text-blue-400">
+                          <span className="font-semibold text-blue-600 dark:text-blue-400">
                             {(item as TeamStanding).points}
                           </span>
                         </td>

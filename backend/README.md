@@ -1,196 +1,203 @@
-# F1 Race Predictor - FastAPI Backend
+# F1 Pulse Backend API
 
-This is the FastAPI backend for the F1 Race Predictor application. It loads prediction data from CSV files and provides a RESTful API for race predictions.
+FastAPI backend service for F1 race predictions using machine learning models.
 
-## Setup
+## Overview
 
-1. Create a virtual environment (recommended):
-```bash
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-```
+This is a standalone FastAPI application that provides REST API endpoints for:
+- F1 race predictions using CatBoost ML models
+- Driver and team statistics
+- Race metadata and standings
+- Custom scenario predictions
 
-2. Install dependencies:
-```bash
-pip install -r requirements.txt
-```
+## Prerequisites
 
-3. Add your CSV data files:
-   - Place your CSV files in the `backend/data/` directory:
-     - `predictions_2025_flat.csv` - Prediction data
-     - `races.csv` - Race metadata
-     - `circuits.csv` - Circuit metadata
-   - See `data/README.md` for detailed file structure requirements
+- Python 3.11+ (recommended)
+- pip
+- Virtual environment (recommended)
 
-## Running the Server
+## Local Development Setup
 
-```bash
-python main.py
-```
+1. **Create and activate virtual environment**:
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   ```
 
-Or with uvicorn directly:
-```bash
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
-```
+2. **Install dependencies**:
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-The API will be available at `http://localhost:8000`
+3. **Ensure required data files exist**:
+   ```
+   backend/
+   ├── data/
+   │   ├── races.csv
+   │   ├── circuits.csv
+   │   └── predictions_2025_flat.csv (optional)
+   ├── models/
+   │   └── f1_model.cbm
+   └── F1_predict_md.py
+   ```
 
-## Data Files
+4. **Set environment variables** (optional for local dev):
+   ```bash
+   export ALLOWED_ORIGINS="http://localhost:3000,http://127.0.0.1:3000"
+   ```
 
-The backend expects CSV files in the `backend/data/` directory:
+5. **Run the server**:
+   ```bash
+   uvicorn main:app --reload --host 0.0.0.0 --port 8000
+   ```
 
-### predictions_2025_flat.csv
-Required columns:
-- `raceId` - Race identifier
-- `driverRef` - Driver reference name
-- `team` - Team name
-- `grid` - Starting grid position (optional)
-- `pred_pos` - Predicted finishing position
-- `finish_pos` - Actual finishing position (optional, for comparison)
+   Or using Python directly:
+   ```bash
+   python main.py
+   ```
 
-### races.csv
-Required columns:
-- `raceId` - Race identifier
-- `year` - Year of the race
-- `round` - Round number in the season
-- `circuitId` - Circuit identifier
-- `name` - Grand Prix name
-- `date` - Race date
-
-### circuits.csv
-Required columns:
-- `circuitId` - Circuit identifier
-- `name` - Circuit name
-- `location` - Location/city
-- `country` - Country
+6. **Verify it's running**:
+   - Health check: http://localhost:8000/health
+   - API docs: http://localhost:8000/docs
 
 ## API Endpoints
 
-### Health Check
-- `GET /` - Root endpoint with status
-- `GET /health` - Detailed health check including data loading status
-
-### Race Listing
-- `GET /races?year=2025` - Get list of available races
-  - Response:
-    ```json
-    {
-      "races": [
-        {
-          "raceId": 1234,
-          "label": "01 | Bahrain Grand Prix — Bahrain International Circuit (Sakhir, Bahrain)",
-          "name": "Bahrain Grand Prix",
-          "circuit": "Bahrain International Circuit",
-          "location": "Sakhir",
-          "country": "Bahrain",
-          "round": 1,
-          "date": "2025-03-02",
-          "year": 2025
-        }
-      ],
-      "total": 24
-    }
-    ```
+### Health & Info
+- `GET /` - Root endpoint
+- `GET /health` - Health check with system status
 
 ### Predictions
-- `POST /predict` - Predict race results by search
-  - Request body:
-    ```json
-    {
-      "race_name": "Monaco Grand Prix",
-      "circuit_name": "Circuit de Monaco" (optional),
-      "race_date": "2025-05-26" (optional),
-      "race_id": 1234 (optional)
-    }
-    ```
-  - Response:
-    ```json
-    {
-      "race_name": "Monaco Grand Prix",
-      "race_id": 1234,
-      "predicted_winner": "max_verstappen",
-      "predicted_winner_team": "Red Bull Racing",
-      "top_3": [
-        {"driver": "max_verstappen", "team": "Red Bull Racing", "position": 1},
-        {"driver": "lewis_hamilton", "team": "Mercedes", "position": 2},
-        {"driver": "charles_leclerc", "team": "Ferrari", "position": 3}
-      ],
-      "full_predictions": [
-        {
-          "driverRef": "max_verstappen",
-          "driver_name": "max_verstappen",
-          "team": "Red Bull Racing",
-          "predicted_position": 1,
-          "grid_position": 1
-        }
-      ],
-      "confidence": 0.85,
-      "circuit_name": "Circuit de Monaco",
-      "race_date": "2025-05-26",
-      "round": 6,
-      "location": "Monte Carlo",
-      "country": "Monaco"
-    }
-    ```
+- `GET /predict/{race_id}` - Get prediction for a specific race
+- `POST /predict/custom` - Get prediction for custom scenario
 
-- `GET /predict/{race_id}` - Get predictions by race ID
-  - Example: `GET /predict/1234`
-  - Returns the same response format as POST /predict
+### Data
+- `GET /races?year={year}` - Get available races for a year
+- `GET /drivers` - Get driver information
+- `GET /statistics` - Get overall statistics
+- `GET /standings?year={year}` - Get championship standings
 
-## API Documentation
+### Comparisons
+- `GET /compare/{race_id}` - Compare predictions with actual results
 
-Once the server is running, visit:
-- Swagger UI: `http://localhost:8000/docs`
-- ReDoc: `http://localhost:8000/redoc`
+## Environment Variables
 
-## Features
+### Required for Production
+- `ALLOWED_ORIGINS`: Comma-separated list of allowed CORS origins
+  - Example: `https://your-app.vercel.app,https://*.vercel.app,http://localhost:3000`
 
-- **Automatic Data Loading**: CSV files are loaded on startup
-- **Flexible Search**: Find races by name, circuit, date, or ID
-- **Full Predictions**: Returns complete race predictions, not just top 3
-- **Error Handling**: Graceful handling of missing data or invalid requests
-- **Logging**: Comprehensive logging for debugging
+### Optional
+- `PORT`: Port number (defaults to 8000, set by platform in production)
 
-## CORS Configuration
+## Deployment
 
-The backend is configured to accept requests from:
-- `http://localhost:3000` (Next.js default)
-- `http://127.0.0.1:3000`
+### Railway
 
-If you're running the frontend on a different port, update the `allow_origins` list in `main.py`.
+1. Connect your GitHub repository to Railway
+2. Create a new service
+3. Set **Root Directory** to `backend`
+4. Railway will auto-detect Python and use `Procfile` or `railway.json`
+5. Add environment variable:
+   - Key: `ALLOWED_ORIGINS`
+   - Value: Your frontend URL(s)
+
+### Render
+
+1. Create a new Web Service on Render
+2. Connect your GitHub repository
+3. Configure:
+   - **Root Directory**: `backend`
+   - **Environment**: Python 3
+   - **Build Command**: `pip install -r requirements.txt`
+   - **Start Command**: `uvicorn main:app --host 0.0.0.0 --port $PORT`
+4. Add environment variable:
+   - Key: `ALLOWED_ORIGINS`
+   - Value: Your frontend URL(s)
+
+### Other Platforms
+
+The backend can be deployed to any platform that supports Python:
+- Heroku (using `Procfile`)
+- AWS Elastic Beanstalk
+- Google Cloud Run
+- Azure App Service
+- DigitalOcean App Platform
+
+Just ensure:
+- Root directory is set to `backend/`
+- `requirements.txt` is installed
+- Start command: `uvicorn main:app --host 0.0.0.0 --port $PORT`
+- `ALLOWED_ORIGINS` environment variable is set
+
+## Project Structure
+
+```
+backend/
+├── main.py                 # FastAPI application and endpoints
+├── F1_predict_md.py        # ML model class and prediction logic
+├── requirements.txt        # Python dependencies
+├── Procfile               # Railway/Heroku deployment config
+├── railway.json           # Railway-specific config
+├── render.yaml            # Render deployment config
+├── data/                  # CSV data files
+│   ├── races.csv
+│   ├── circuits.csv
+│   └── predictions_2025_flat.csv
+├── models/                # ML model files
+│   └── f1_model.cbm
+└── README.md              # This file
+```
+
+## Dependencies
+
+Key dependencies:
+- `fastapi` - Web framework
+- `uvicorn` - ASGI server
+- `catboost` - ML model library
+- `fastf1` - F1 data fetching
+- `pandas` - Data manipulation
+- `numpy` - Numerical operations
+- `pydantic` - Data validation
+
+See `requirements.txt` for complete list.
+
+## Testing
+
+Test the API endpoints:
+
+```bash
+# Health check
+curl http://localhost:8000/health
+
+# Get races
+curl http://localhost:8000/races?year=2025
+
+# Get prediction
+curl http://localhost:8000/predict/1
+```
+
+Or use the interactive docs at `/docs` when the server is running.
 
 ## Troubleshooting
 
-### Data Not Loading
-- Check that CSV files are in `backend/data/` directory
-- Verify file names match exactly: `predictions_2025_flat.csv`, `races.csv`, `circuits.csv`
-- Check that CSV files have proper headers
-- Review server logs for specific error messages
+### CORS Errors
+- Ensure `ALLOWED_ORIGINS` includes your frontend URL
+- Check that the URL matches exactly (including `https://`)
 
-### Race Not Found
-- Verify the race exists in your `races.csv` file
-- Check that the year matches (default is 2025)
-- Try using the race ID directly: `GET /predict/{race_id}`
-- Use `GET /races` to see all available races
+### Model Not Found
+- Ensure `models/f1_model.cbm` exists
+- Check that `F1_predict_md.py` is in the backend directory
 
-### Prediction Errors
-- Ensure `predictions_2025_flat.csv` contains data for the requested race
-- Check that `raceId` values match between files
-- Verify required columns exist in prediction data
+### Data Files Missing
+- Ensure `data/races.csv` and `data/circuits.csv` exist
+- Run data generation scripts if needed
 
-## Development
+### Port Already in Use
+- Change the port: `uvicorn main:app --port 8001`
+- Or kill the process using port 8000
 
-### Adding Support for Other Years
-To support multiple years, modify the `_build_metadata()` method in `F1Predictor` class to filter by year parameter.
+## Support
 
-### Improving Confidence Scores
-The current confidence is a placeholder (0.85). To add real confidence scores:
-1. Include confidence data in your prediction CSV
-2. Update the `predict()` method to use actual confidence values
-3. Consider calculating confidence based on prediction variance or model outputs
-
-### Extending the API
-The codebase is structured to easily add new endpoints:
-- Add new route handlers in `main.py`
-- Extend `F1Predictor` class with new methods
-- Update Pydantic models for new request/response formats
+For issues or questions:
+- Check the main project README
+- Review API documentation at `/docs` endpoint
+- Check deployment guide: `../DEPLOYMENT.md`

@@ -84,6 +84,21 @@ class PredictionRequest(BaseModel):
     race_id: Optional[int] = None  # Direct race ID lookup
 
 
+class CustomDriverInput(BaseModel):
+    driverRef: str
+    driver_abbreviation: str  # 3-letter code like VER, HAM, etc.
+    team: str
+    grid_position: int  # Starting position (1-20)
+    recent_form: Optional[float] = None  # Average finishing position in last 3 races (optional)
+
+
+class CustomScenarioRequest(BaseModel):
+    race_name: Optional[str] = None
+    circuit_name: Optional[str] = None
+    race_date: Optional[str] = None
+    drivers: List[CustomDriverInput]  # List of drivers with their grid positions
+
+
 class RaceInfo(BaseModel):
     raceId: int
     label: str
@@ -680,8 +695,8 @@ class F1Predictor:
             # Check if metadata is available
             if self.meta.empty:
                 logger.warning("Metadata is empty, cannot get race info")
-                return None
-            
+            return None
+        
             # Check if raceId column exists
             if "raceId" not in self.meta.columns:
                 logger.warning(f"raceId column not found in metadata. Available columns: {list(self.meta.columns)}")
@@ -749,13 +764,13 @@ class F1Predictor:
                 if not self.flat.empty and "finish_pos" in self.flat.columns:
                     logger.info("Falling back to CSV results")
                     csv_results = self.flat[
-                        (self.flat["raceId"] == race_id) & 
-                        (self.flat["finish_pos"].notna())
-                    ].copy()
+            (self.flat["raceId"] == race_id) & 
+            (self.flat["finish_pos"].notna())
+        ].copy()
                     if not csv_results.empty:
                         return csv_results.sort_values("finish_pos")
                 return None
-                
+        
         except Exception as e:
             logger.error(f"Error getting actual results: {e}")
             import traceback
@@ -775,8 +790,8 @@ class F1Predictor:
             try:
                 pred_result = self.predict(race_id=race_id)
                 if not pred_result or "full_predictions" not in pred_result:
-                    return None
-                
+            return None
+        
                 # Convert predictions to DataFrame
                 predictions_list = pred_result["full_predictions"]
                 predictions_df = pd.DataFrame([
@@ -802,37 +817,37 @@ class F1Predictor:
                 on='driverRef',
                 how='inner'
             )
-            
+        
             if merged.empty:
                 logger.warning(f"No matching drivers between predictions and actual results for race {race_id}")
-                return None
-            
-            # Calculate metrics
+            return None
+        
+        # Calculate metrics
             merged["error"] = abs(merged["pred_pos"] - merged["finish_pos"])
             mae = merged["error"].mean()
             rmse = (merged["error"] ** 2).mean() ** 0.5
-            
-            # Count exact matches
+        
+        # Count exact matches
             exact_matches = (merged["pred_pos"] == merged["finish_pos"]).sum()
             exact_match_rate = exact_matches / len(merged)
-            
-            # Count within 1 position
+        
+        # Count within 1 position
             within_one = (merged["error"] <= 1).sum()
             within_one_rate = within_one / len(merged)
-            
-            # Count within 3 positions
+        
+        # Count within 3 positions
             within_three = (merged["error"] <= 3).sum()
             within_three_rate = within_three / len(merged)
-            
-            return {
-                "mae": round(mae, 2),
-                "rmse": round(rmse, 2),
-                "exact_matches": int(exact_matches),
-                "exact_match_rate": round(exact_match_rate, 3),
-                "within_one": int(within_one),
-                "within_one_rate": round(within_one_rate, 3),
-                "within_three": int(within_three),
-                "within_three_rate": round(within_three_rate, 3),
+        
+        return {
+            "mae": round(mae, 2),
+            "rmse": round(rmse, 2),
+            "exact_matches": int(exact_matches),
+            "exact_match_rate": round(exact_match_rate, 3),
+            "within_one": int(within_one),
+            "within_one_rate": round(within_one_rate, 3),
+            "within_three": int(within_three),
+            "within_three_rate": round(within_three_rate, 3),
                 "total_drivers": len(merged)
             }
         except Exception as e:
@@ -840,6 +855,155 @@ class F1Predictor:
             import traceback
             logger.error(traceback.format_exc())
             return None
+    
+    def predict_custom_scenario(self, drivers_data: List[Dict], race_name: str = None, 
+                                circuit_name: str = None, race_date: str = None) -> dict:
+        """
+        Predict race results for a custom scenario with user-provided grid positions
+        
+        Args:
+            drivers_data: List of dicts with keys: driver_abbreviation, team, grid_position, recent_form (optional)
+            race_name: Optional race name for metadata
+            circuit_name: Optional circuit name for metadata
+            race_date: Optional race date for metadata
+            
+        Returns:
+            Dictionary with prediction results
+        """
+        if not self.use_ml_model or not self.ml_predictor:
+            raise ValueError("ML model is required for custom scenario predictions. Please ensure the model is trained.")
+        
+        if not self.model_loaded:
+            # Try to train the model
+            try:
+                self.ml_predictor.train(2025)
+                self.ml_predictor.model.save_model(str(MODEL_FILE))
+                self.model_loaded = True
+                logger.info("✓ Model trained and saved successfully")
+            except Exception as train_err:
+                logger.error(f"Could not train model: {train_err}")
+                raise ValueError(f"ML model needs to be trained first. Run: python train_model.py --year 2025")
+        
+        # Build prediction dataframe from custom input
+        pred_data = []
+        for driver_info in drivers_data:
+            abbrev = driver_info.get('driver_abbreviation', '').upper()
+            team = driver_info.get('team', '')
+            grid = int(driver_info.get('grid_position', 1))
+            recent_form = driver_info.get('recent_form')
+            
+            # Calculate Q_Delta (time delta from pole position)
+            # For custom scenarios, we'll use grid position as a proxy
+            # Pole = grid 1, so delta = (grid - 1) * some factor
+            # Typical Q_Delta is in seconds, so we'll approximate: 0.1s per grid position
+            q_delta = (grid - 1) * 0.1
+            
+            pred_data.append({
+                'Driver': abbrev,
+                'Team': team,
+                'Grid': grid,
+                'Q_Delta': q_delta,
+                'Form_Last3': recent_form if recent_form is not None else float(grid)
+            })
+        
+        if not pred_data:
+            raise ValueError("No driver data provided")
+        
+        # Calculate TeamStrength (average grid position per team)
+        df = pd.DataFrame(pred_data)
+        team_strength = df.groupby('Team')['Grid'].transform('mean')
+        df['TeamStrength'] = team_strength
+        
+        # Prepare features for model (same as in F1_predict_md.py)
+        X_pred = df[['Grid', 'TeamStrength', 'Q_Delta', 'Driver', 'Team', 'Form_Last3']].copy()
+        
+        # Make predictions
+        try:
+            predictions = self.ml_predictor.model.predict(X_pred)
+        except Exception as e:
+            logger.error(f"Model prediction failed: {e}")
+            raise ValueError(f"Failed to generate predictions: {str(e)}")
+        
+        # Combine results
+        results = []
+        raw_scores = []
+        for pred_score, (_, row) in zip(predictions, X_pred.iterrows()):
+            driver_abbrev = row['Driver']
+            driver_ref = abbrev_to_driver_ref(driver_abbrev)
+            driver_name = driver_ref.replace('_', ' ').title()
+            
+            results.append({
+                'Driver': driver_abbrev,
+                'driverRef': driver_ref,
+                'driver_name': driver_name,
+                'Team': row['Team'],
+                'Start': int(row['Grid']),
+                'Score': float(pred_score)
+            })
+            raw_scores.append(float(pred_score))
+        
+        # Sort by score (lower is better)
+        results.sort(key=lambda x: x['Score'])
+        
+        # Assign predicted positions
+        for i, res in enumerate(results):
+            res['Pred_Pos'] = i + 1
+        
+        # Calculate confidence (same logic as regular predictions)
+        if len(raw_scores) > 1:
+            score_std = pd.Series(raw_scores).std()
+            score_mean = pd.Series(raw_scores).mean()
+            cv = score_std / score_mean if score_mean > 0 else 1.0
+            cv_factor = max(0, min(1, 1.0 - (cv / 0.30)))
+            
+            sorted_scores = sorted(raw_scores)
+            top_gap = sorted_scores[1] - sorted_scores[0] if len(sorted_scores) > 1 else 0
+            avg_gap = (sorted_scores[-1] - sorted_scores[0]) / (len(sorted_scores) - 1) if len(sorted_scores) > 1 else 1
+            gap_factor = min(1, top_gap / avg_gap) if avg_gap > 0 else 0.5
+            
+            base_confidence = 0.75
+            confidence = base_confidence + (cv_factor * 0.15) + (gap_factor * 0.10)
+            confidence = max(0.70, min(0.95, confidence))
+        else:
+            confidence = 0.80
+        
+        # Convert to API format
+        full_predictions = []
+        for res in results:
+            full_predictions.append(
+                DriverPrediction(
+                    driverRef=res['driverRef'],
+                    driver_name=res['driver_name'],
+                    team=res['Team'],
+                    predicted_position=res['Pred_Pos'],
+                    grid_position=res['Start']
+                )
+            )
+        
+        # Get top 3
+        top_3_list = [
+            {
+                "driver": pred.driverRef,
+                "team": pred.team,
+                "position": str(pred.predicted_position)
+            }
+            for pred in full_predictions[:3]
+        ]
+        
+        return {
+            "race_name": race_name or "Custom Scenario",
+            "race_id": 0,  # No real race ID for custom scenarios
+            "predicted_winner": top_3_list[0]["driver"] if top_3_list else "Unknown",
+            "predicted_winner_team": top_3_list[0]["team"] if top_3_list else "Unknown",
+            "top_3": top_3_list,
+            "full_predictions": full_predictions,
+            "confidence": round(confidence, 2),
+            "circuit_name": circuit_name,
+            "race_date": race_date,
+            "round": None,
+            "location": None,
+            "country": None
+        }
     
     def get_driver_profile(self, driver_ref: str) -> Optional[dict]:
         """Get comprehensive driver profile and statistics"""
@@ -1359,6 +1523,72 @@ async def predict_race_by_id(race_id: int):
         )
 
 
+@app.post("/predict/custom", response_model=PredictionResponse)
+async def predict_custom_scenario(request: CustomScenarioRequest):
+    """
+    Predict race results for a custom scenario with user-provided grid positions
+    
+    Args:
+        request: CustomScenarioRequest with driver data and optional race info
+        
+    Returns:
+        PredictionResponse with predicted results
+    """
+    try:
+        # Validate input
+        if not request.drivers or len(request.drivers) == 0:
+            raise HTTPException(
+                status_code=400,
+                detail="At least one driver must be provided"
+            )
+        
+        # Validate grid positions are unique and in valid range
+        grid_positions = [d.grid_position for d in request.drivers]
+        if len(grid_positions) != len(set(grid_positions)):
+            raise HTTPException(
+                status_code=400,
+                detail="Grid positions must be unique for each driver"
+            )
+        
+        if any(gp < 1 or gp > 20 for gp in grid_positions):
+            raise HTTPException(
+                status_code=400,
+                detail="Grid positions must be between 1 and 20"
+            )
+        
+        # Convert to dict format for predictor
+        drivers_data = [
+            {
+                'driver_abbreviation': d.driver_abbreviation,
+                'team': d.team,
+                'grid_position': d.grid_position,
+                'recent_form': d.recent_form
+            }
+            for d in request.drivers
+        ]
+        
+        # Get prediction
+        result = predictor.predict_custom_scenario(
+            drivers_data=drivers_data,
+            race_name=request.race_name,
+            circuit_name=request.circuit_name,
+            race_date=request.race_date
+        )
+        
+        return PredictionResponse(**result)
+    
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Custom prediction error: {str(e)}")
+        import traceback
+        logger.error(traceback.format_exc())
+        raise HTTPException(
+            status_code=500,
+            detail=f"Custom prediction failed: {str(e)}"
+        )
+
+
 @app.get("/compare/{race_id}", response_model=ComparisonResponse)
 async def compare_prediction_actual(race_id: int):
     """
@@ -1385,16 +1615,16 @@ async def compare_prediction_actual(race_id: int):
         actual_results = None
         if actual_df is not None and not actual_df.empty:
             try:
-                actual_results = [
-                    ActualResult(
-                        driverRef=str(row.get("driverRef", "Unknown")),
-                        driver_name=str(row.get("driverRef", "Unknown")),
-                        team=str(row.get("team", "Unknown")),
-                        finish_position=int(row.get("finish_pos", 0)),
+            actual_results = [
+                ActualResult(
+                    driverRef=str(row.get("driverRef", "Unknown")),
+                    driver_name=str(row.get("driverRef", "Unknown")),
+                    team=str(row.get("team", "Unknown")),
+                    finish_position=int(row.get("finish_pos", 0)),
                         grid_position=int(row.get("grid", 0)) if pd.notna(row.get("grid")) and row.get("grid") is not None else None
-                    )
-                    for _, row in actual_df.iterrows()
-                ]
+                )
+                for _, row in actual_df.iterrows()
+            ]
             except Exception as e:
                 logger.warning(f"Error formatting actual results: {e}")
                 actual_results = None
@@ -1402,7 +1632,7 @@ async def compare_prediction_actual(race_id: int):
         # Get accuracy metrics (only if we have both predictions and actual results)
         accuracy = None
         if actual_results:
-            accuracy = predictor.get_prediction_accuracy(race_id)
+        accuracy = predictor.get_prediction_accuracy(race_id)
         
         return ComparisonResponse(
             race_id=race_id,
@@ -1450,39 +1680,39 @@ async def get_statistics():
         
         # Try to get statistics from CSV data if available
         if not predictor.flat.empty and "raceId" in predictor.flat.columns:
-            races_with_predictions = predictor.flat["raceId"].nunique()
-            total_predictions = len(predictor.flat)
-            
-            # Top drivers by predicted wins
+        races_with_predictions = predictor.flat["raceId"].nunique()
+        total_predictions = len(predictor.flat)
+        
+        # Top drivers by predicted wins
             top_drivers = []
             top_teams = []
             
-            if "pred_pos" in predictor.flat.columns:
-                winners = predictor.flat[predictor.flat["pred_pos"] == 1]
+        if "pred_pos" in predictor.flat.columns:
+            winners = predictor.flat[predictor.flat["pred_pos"] == 1]
                 if not winners.empty:
                     if "driverRef" in predictor.flat.columns:
-                        driver_wins = winners["driverRef"].value_counts().head(10)
-                        top_drivers = [
-                            {"driver": str(driver), "predicted_wins": int(wins)}
-                            for driver, wins in driver_wins.items()
-                        ]
-                    
+            driver_wins = winners["driverRef"].value_counts().head(10)
+            top_drivers = [
+                {"driver": str(driver), "predicted_wins": int(wins)}
+                for driver, wins in driver_wins.items()
+            ]
+        
                     if "team" in predictor.flat.columns:
-                        team_wins = winners["team"].value_counts().head(10)
-                        top_teams = [
-                            {"team": str(team), "predicted_wins": int(wins)}
-                            for team, wins in team_wins.items()
-                        ]
+            team_wins = winners["team"].value_counts().head(10)
+            top_teams = [
+                {"team": str(team), "predicted_wins": int(wins)}
+                for team, wins in team_wins.items()
+            ]
             
             avg_confidence = 0.82  # Default confidence for CSV predictions
-            
-            return StatisticsResponse(
-                total_races=races_with_predictions,
-                total_predictions=total_predictions,
-                average_confidence=avg_confidence,
-                top_drivers=top_drivers,
-                top_teams=top_teams
-            )
+        
+        return StatisticsResponse(
+            total_races=races_with_predictions,
+            total_predictions=total_predictions,
+            average_confidence=avg_confidence,
+            top_drivers=top_drivers,
+            top_teams=top_teams
+        )
         
         # If no CSV data, provide basic statistics from metadata
         # Generating predictions for all races would be too slow

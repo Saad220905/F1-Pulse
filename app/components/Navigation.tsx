@@ -11,8 +11,10 @@ export default function Navigation() {
       <div className="container mx-auto px-4 py-4 max-w-6xl">
         <div className="flex items-center justify-between">
           <Link href="/" className="flex items-center space-x-2 group">
-            <span className="text-2xl">🏎️</span>
-            <span className="text-xl font-bold text-gray-900 dark:text-white group-hover:text-red-600 dark:group-hover:text-red-400 transition-colors">
+            <div className="w-8 h-8 bg-gradient-to-br from-red-600 to-red-800 rounded flex items-center justify-center">
+              <span className="text-white font-bold text-sm">F1</span>
+            </div>
+            <span className="text-xl font-semibold text-gray-900 dark:text-white group-hover:text-red-600 dark:group-hover:text-red-400 transition-colors">
               F1 Pulse
             </span>
           </Link>

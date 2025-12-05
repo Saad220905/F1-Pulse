@@ -69,37 +69,37 @@ export default function Dashboard() {
       <div className="container mx-auto px-4 py-12 max-w-7xl">
         {/* Header */}
         <div className="text-center mb-12">
-          <h1 className="text-5xl font-bold text-gray-900 dark:text-white mb-4">
-            📊 F1 Prediction Dashboard
+          <h1 className="text-4xl font-semibold text-gray-900 dark:text-white mb-3">
+            F1 Prediction Dashboard
           </h1>
-          <p className="text-xl text-gray-600 dark:text-gray-300">
+          <p className="text-lg text-gray-600 dark:text-gray-400">
             Comprehensive statistics and insights
           </p>
         </div>
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border-l-4 border-red-600">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 border-l-4 border-red-600">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Races</p>
-                <p className="text-3xl font-bold text-gray-900 dark:text-white mt-2">{stats.total_races}</p>
+                <p className="text-3xl font-semibold text-gray-900 dark:text-white mt-2">{stats.total_races}</p>
               </div>
-              <Trophy className="w-12 h-12 text-red-600" />
+              <Trophy className="w-8 h-8 text-red-600" />
             </div>
           </div>
 
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border-l-4 border-blue-600">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 border-l-4 border-blue-600">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Predictions</p>
-                <p className="text-3xl font-bold text-gray-900 dark:text-white mt-2">{stats.total_predictions}</p>
+                <p className="text-3xl font-semibold text-gray-900 dark:text-white mt-2">{stats.total_predictions}</p>
               </div>
-              <Target className="w-12 h-12 text-blue-600" />
+              <Target className="w-8 h-8 text-blue-600" />
             </div>
           </div>
 
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border-l-4 border-green-600">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 border-l-4 border-green-600">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Avg Confidence</p>
@@ -111,13 +111,13 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border-l-4 border-purple-600">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 border-l-4 border-purple-600">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Top Drivers</p>
-                <p className="text-3xl font-bold text-gray-900 dark:text-white mt-2">{stats.top_drivers.length}</p>
+                <p className="text-3xl font-semibold text-gray-900 dark:text-white mt-2">{stats.top_drivers.length}</p>
               </div>
-              <Users className="w-12 h-12 text-purple-600" />
+              <Users className="w-8 h-8 text-purple-600" />
             </div>
           </div>
         </div>
@@ -125,9 +125,8 @@ export default function Dashboard() {
         {/* Charts Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
           {/* Top Drivers Chart */}
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6">
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6 flex items-center">
-              <Award className="w-6 h-6 mr-2 text-yellow-500" />
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">
               Top Predicted Winners (Drivers)
             </h2>
             {stats.top_drivers.length === 0 ? (
@@ -164,9 +163,8 @@ export default function Dashboard() {
           </div>
 
           {/* Top Teams Chart */}
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6">
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6 flex items-center">
-              <Users className="w-6 h-6 mr-2 text-blue-500" />
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">
               Top Predicted Winners (Teams)
             </h2>
             {stats.top_teams.length === 0 ? (
@@ -207,49 +205,48 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
           <Link
             href="/drivers"
-            className="bg-gradient-to-br from-red-600 to-red-700 rounded-2xl shadow-xl p-8 text-white hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1"
+            className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 hover:shadow-md transition-all duration-200 hover:border-red-600"
           >
-            <Users className="w-12 h-12 mb-4" />
-            <h3 className="text-2xl font-bold mb-2">Driver Profiles</h3>
-            <p className="text-red-100 mb-4">Explore comprehensive driver statistics and performance analysis</p>
-            <div className="flex items-center text-red-100">
-              <span className="font-semibold">View All Drivers</span>
-              <ArrowRight className="w-5 h-5 ml-2" />
+            <Users className="w-8 h-8 mb-3 text-red-600" />
+            <h3 className="text-lg font-semibold mb-2 text-gray-900 dark:text-white">Driver Profiles</h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">Explore comprehensive driver statistics and performance analysis</p>
+            <div className="flex items-center text-red-600 dark:text-red-400">
+              <span className="font-medium text-sm">View All Drivers</span>
+              <ArrowRight className="w-4 h-4 ml-2" />
             </div>
           </Link>
 
           <Link
             href="/standings"
-            className="bg-gradient-to-br from-blue-600 to-blue-700 rounded-2xl shadow-xl p-8 text-white hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1"
+            className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 hover:shadow-md transition-all duration-200 hover:border-blue-600"
           >
-            <Trophy className="w-12 h-12 mb-4" />
-            <h3 className="text-2xl font-bold mb-2">Championship Standings</h3>
-            <p className="text-blue-100 mb-4">View predicted driver and team championship standings</p>
-            <div className="flex items-center text-blue-100">
-              <span className="font-semibold">View Standings</span>
-              <ArrowRight className="w-5 h-5 ml-2" />
+            <Trophy className="w-8 h-8 mb-3 text-blue-600" />
+            <h3 className="text-lg font-semibold mb-2 text-gray-900 dark:text-white">Championship Standings</h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">View predicted driver and team championship standings</p>
+            <div className="flex items-center text-blue-600 dark:text-blue-400">
+              <span className="font-medium text-sm">View Standings</span>
+              <ArrowRight className="w-4 h-4 ml-2" />
             </div>
           </Link>
 
           <Link
             href="/"
-            className="bg-gradient-to-br from-green-600 to-green-700 rounded-2xl shadow-xl p-8 text-white hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1"
+            className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 hover:shadow-md transition-all duration-200 hover:border-green-600"
           >
-            <Target className="w-12 h-12 mb-4" />
-            <h3 className="text-2xl font-bold mb-2">Race Predictor</h3>
-            <p className="text-green-100 mb-4">Get AI-powered predictions for any race</p>
-            <div className="flex items-center text-green-100">
-              <span className="font-semibold">Make Prediction</span>
-              <ArrowRight className="w-5 h-5 ml-2" />
+            <Target className="w-8 h-8 mb-3 text-green-600" />
+            <h3 className="text-lg font-semibold mb-2 text-gray-900 dark:text-white">Race Predictor</h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">Get AI-powered predictions for any race</p>
+            <div className="flex items-center text-green-600 dark:text-green-400">
+              <span className="font-medium text-sm">Make Prediction</span>
+              <ArrowRight className="w-4 h-4 ml-2" />
             </div>
           </Link>
         </div>
 
         {/* Top Drivers List */}
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 mb-8">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-8">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center">
-              <Zap className="w-6 h-6 mr-2 text-yellow-500" />
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
               Top 10 Predicted Race Winners
             </h2>
             <Link
@@ -273,8 +270,8 @@ export default function Dashboard() {
                 className="bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-600 rounded-lg p-4 border-2 border-transparent hover:border-red-500 transition-all cursor-pointer"
               >
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-2xl font-bold text-gray-400">#{index + 1}</span>
-                  <Trophy className="w-5 h-5 text-yellow-500" />
+                  <span className="text-lg font-semibold text-gray-400">#{index + 1}</span>
+                  <Trophy className="w-4 h-4 text-amber-500" />
                 </div>
                 <p className="font-semibold text-gray-900 dark:text-white text-sm mb-1">
                   {formatDriverName(driver.driver)}
@@ -289,9 +286,8 @@ export default function Dashboard() {
         </div>
 
         {/* Top Teams List */}
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6 flex items-center">
-            <Users className="w-6 h-6 mr-2 text-blue-500" />
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">
             Top 10 Predicted Team Winners
           </h2>
           {stats.top_teams.length === 0 ? (
@@ -307,8 +303,8 @@ export default function Dashboard() {
                 className="bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-600 rounded-lg p-4 border-2 border-transparent hover:border-blue-500 transition-all"
               >
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-2xl font-bold text-gray-400">#{index + 1}</span>
-                  <Award className="w-5 h-5 text-blue-500" />
+                  <span className="text-lg font-semibold text-gray-400">#{index + 1}</span>
+                  <Award className="w-4 h-4 text-blue-500" />
                 </div>
                 <div className="flex items-center justify-center mb-2">
                   {getTeamLogo(team.team) ? (

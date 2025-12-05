@@ -1,4 +1,4 @@
-# 🏎️ F1 Race Predictor
+# 🏎️ F1 Pulse
 
 An AI-powered Formula 1 race result predictor with a beautiful, user-friendly interface. Perfect for both F1 enthusiasts and newcomers to the sport.
 
@@ -9,6 +9,17 @@ An AI-powered Formula 1 race result predictor with a beautiful, user-friendly in
 - 🚀 **Fast Performance**: Built with Next.js for optimal speed
 - 📱 **Responsive Design**: Works perfectly on desktop and mobile devices
 - 🌙 **Dark Mode**: Automatic dark mode support
+- 🗺️ **Interactive Map**: Select races visually on a world map
+- 🎯 **Custom Scenarios**: Create your own race scenarios for predictions
+
+## Architecture
+
+This project consists of two separate, independently deployable applications:
+
+- **Frontend**: Next.js application (deployed to Vercel)
+- **Backend**: FastAPI application (deployed to Railway/Render)
+
+They communicate via REST API calls. See [DEPLOYMENT.md](./DEPLOYMENT.md) for deployment instructions.
 
 ## Project Structure
 
@@ -16,12 +27,19 @@ An AI-powered Formula 1 race result predictor with a beautiful, user-friendly in
 f1-pulse/
 ├── app/                    # Next.js frontend application
 │   ├── page.tsx           # Main prediction interface
-│   ├── layout.tsx         # Root layout
-│   └── globals.css        # Global styles
-├── backend/                # FastAPI backend
-│   ├── main.py            # FastAPI application
-│   ├── requirements.txt   # Python dependencies
-│   └── README.md          # Backend documentation
+│   ├── components/        # React components
+│   ├── utils/             # Utility functions
+│   └── ...
+├── backend/               # FastAPI backend (standalone)
+│   ├── main.py           # FastAPI application
+│   ├── F1_predict_md.py  # ML model integration
+│   ├── requirements.txt  # Python dependencies
+│   ├── Procfile          # Deployment config
+│   ├── railway.json      # Railway config
+│   ├── render.yaml       # Render config
+│   └── README.md         # Backend documentation
+├── public/                # Static assets
+├── DEPLOYMENT.md          # Deployment guide
 └── README.md              # This file
 ```
 
@@ -29,77 +47,54 @@ f1-pulse/
 
 ### Prerequisites
 
-- Node.js 18+ and npm
-- Python 3.8+
-- Your trained F1 prediction model (or use the mock predictions for testing)
+- **For Frontend**: Node.js 18+ and npm
+- **For Backend**: Python 3.11+ and pip
 
 ### Frontend Setup (Next.js)
 
-1. Install dependencies:
-```bash
-npm install
-```
+1. **Install dependencies**:
+   ```bash
+   npm install
+   ```
 
-2. Run the development server:
-```bash
-npm run dev
-```
+2. **Set environment variable** (create `.env.local`):
+   ```bash
+   NEXT_PUBLIC_API_URL=http://localhost:8000
+   ```
 
-3. Open [http://localhost:3000](http://localhost:3000) in your browser
+3. **Run the development server**:
+   ```bash
+   npm run dev
+   ```
+
+4. **Open** [http://localhost:3000](http://localhost:3000) in your browser
 
 ### Backend Setup (FastAPI)
 
-1. Navigate to the backend directory:
+See [backend/README.md](./backend/README.md) for detailed setup instructions.
+
+**Quick start**:
 ```bash
 cd backend
-```
-
-2. Create a virtual environment (recommended):
-```bash
 python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
-```
-
-3. Install dependencies:
-```bash
 pip install -r requirements.txt
-```
-
-4. Start the FastAPI server:
-```bash
-python main.py
-```
-
-Or with uvicorn:
-```bash
 uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 The API will be available at `http://localhost:8000`
 
-### Integrating Your AI Model
-
-1. Place your trained model file in the `backend/` directory
-2. Update `backend/main.py`:
-   - Modify the `F1Predictor` class to load your model
-   - Update the `predict()` method to use your actual model
-   - See `backend/README.md` for detailed instructions
-
 ## How to Use
 
 1. **Start both servers**:
    - Frontend: `npm run dev` (runs on port 3000)
-   - Backend: `python backend/main.py` (runs on port 8000)
+   - Backend: `uvicorn main:app --reload` (runs on port 8000)
 
 2. **Open the app** in your browser at `http://localhost:3000`
 
-3. **Enter a race name** (e.g., "Monaco Grand Prix")
+3. **Select a race** from the map or dropdown, or create a custom scenario
 
-4. **Optionally add**:
-   - Circuit name (e.g., "Circuit de Monaco")
-   - Race date
-
-5. **Click "Get Prediction"** to see AI-powered race predictions!
+4. **Click "Generate Prediction"** to see AI-powered race predictions!
 
 ## API Endpoints
 
@@ -117,29 +112,33 @@ When the backend is running, visit:
 
 ## Configuration
 
-### Changing the Backend URL
+### Frontend Environment Variables
 
-If your FastAPI server runs on a different port or URL, update the fetch URL in `app/page.tsx`:
+Create `.env.local` in the root directory:
 
-```typescript
-const response = await fetch('http://localhost:8000/predict', {
-  // ... your config
-});
+```bash
+NEXT_PUBLIC_API_URL=http://localhost:8000
 ```
 
-### CORS Configuration
+For production, set this in your deployment platform (e.g., Vercel).
 
-If you need to allow requests from different origins, update the CORS settings in `backend/main.py`:
+### Backend Environment Variables
 
-```python
-allow_origins=["http://localhost:3000", "http://your-frontend-url.com"]
+Set `ALLOWED_ORIGINS` to allow frontend requests:
+
+```bash
+export ALLOWED_ORIGINS="http://localhost:3000,https://your-app.vercel.app"
 ```
+
+For production, set this in your deployment platform (e.g., Railway/Render).
 
 ## Tech Stack
 
-- **Frontend**: Next.js 16, React 19, TypeScript, Tailwind CSS
-- **Backend**: FastAPI, Python, Pydantic
-- **Deployment**: Ready for Vercel (frontend) and any Python hosting (backend)
+- **Frontend**: Next.js 16, React 19, TypeScript, Tailwind CSS, Leaflet
+- **Backend**: FastAPI, Python 3.11+, CatBoost, FastF1, Pandas
+- **Deployment**: 
+  - Frontend: Vercel (or any Next.js hosting)
+  - Backend: Railway, Render, or any Python hosting platform
 
 ## Development
 
@@ -154,8 +153,10 @@ npm run lint     # Run linter
 ### Backend Development
 ```bash
 cd backend
-uvicorn main:app --reload  # Start with auto-reload
+uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```
+
+See [backend/README.md](./backend/README.md) for more details.
 
 ## Contributing
 
@@ -168,11 +169,21 @@ uvicorn main:app --reload  # Start with auto-reload
 
 MIT License - feel free to use this project for your own purposes!
 
+## Deployment
+
+For detailed deployment instructions, see [DEPLOYMENT.md](./DEPLOYMENT.md).
+
+**Quick summary**:
+1. Deploy backend to Railway/Render (set `ALLOWED_ORIGINS`)
+2. Deploy frontend to Vercel (set `NEXT_PUBLIC_API_URL`)
+3. Both services communicate via HTTP API
+
 ## Support
 
 For issues or questions:
-- Check the backend README: `backend/README.md`
-- Review the API documentation at `http://localhost:8000/docs`
+- Backend: See [backend/README.md](./backend/README.md)
+- Deployment: See [DEPLOYMENT.md](./DEPLOYMENT.md)
+- API docs: `http://localhost:8000/docs` (when backend is running)
 
 ---
 

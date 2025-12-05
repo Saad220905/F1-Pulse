@@ -62,6 +62,6 @@ export function getTeamLogo(teamName: string): string | null {
 
 // Format driver name for display
 export function formatDriverName(name: string): string {
-  return name.replace('_', ' ').replace(/\b\w/g, (l) => l.toUpperCase());
+  return name.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
 }
 

@@ -2,6 +2,19 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
+import dynamic from 'next/dynamic';
+import { getDriverPortrait, getTeamLogo, formatDriverName } from './utils/images';
+
+// Dynamically import RaceMap to avoid SSR issues with Leaflet
+const RaceMap = dynamic(() => import('./components/RaceMap'), { 
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-[500px] bg-gray-100 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 flex items-center justify-center">
+      <div className="text-gray-500 dark:text-gray-400">Loading map...</div>
+    </div>
+  )
+});
 
 interface RaceInfo {
   raceId: number;
@@ -13,6 +26,22 @@ interface RaceInfo {
   round: number;
   date: string;
   year: number;
+}
+
+interface Driver {
+  driverRef: string;
+  driver_name: string;
+  total_races: number;
+  predicted_wins: number;
+  current_team: string | null;
+}
+
+interface CustomDriver {
+  driverRef: string;
+  driver_abbreviation: string;
+  team: string;
+  grid_position: number;
+  recent_form?: number;
 }
 
 interface DriverPrediction {
@@ -38,21 +67,57 @@ interface PredictionResult {
   country?: string;
 }
 
+// Driver abbreviations mapping (3-letter codes)
+const DRIVER_ABBREVIATIONS: Record<string, string> = {
+  'max_verstappen': 'VER',
+  'lewis_hamilton': 'HAM',
+  'charles_leclerc': 'LEC',
+  'carlos_sainz': 'SAI',
+  'lando_norris': 'NOR',
+  'george_russell': 'RUS',
+  'alexander_albon': 'ALB',
+  'esteban_ocon': 'OCO',
+  'fernando_alonso': 'ALO',
+  'lance_stroll': 'STR',
+  'pierre_gasly': 'GAS',
+  'yuki_tsunoda': 'TSU',
+  'nico_hulkenberg': 'HUL',
+  'oscar_piastri': 'PIA',
+  'valtteri_bottas': 'BOT',
+  'guanyu_zhou': 'ZHO',
+  'kevin_magnussen': 'MAG',
+  'daniel_ricciardo': 'RIC',
+  'liam_lawson': 'LAW',
+  'oliver_bearman': 'BEA',
+  'kimi_antonelli': 'ANT',
+  'jack_doohan': 'DOO',
+  'isack_hadjar': 'HAD',
+  'gabriel_bortoleto': 'BOR',
+  'franco_colapinto': 'COL',
+};
+
 export default function Home() {
   const [raceName, setRaceName] = useState('');
   const [circuitName, setCircuitName] = useState('');
   const [raceDate, setRaceDate] = useState('');
   const [selectedRaceId, setSelectedRaceId] = useState<number | null>(null);
   const [availableRaces, setAvailableRaces] = useState<RaceInfo[]>([]);
+  const [drivers, setDrivers] = useState<Driver[]>([]);
   const [loadingRaces, setLoadingRaces] = useState(false);
+  const [loadingDrivers, setLoadingDrivers] = useState(false);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<PredictionResult | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [searchMode, setSearchMode] = useState<'select' | 'manual'>('select');
+  const [searchMode, setSearchMode] = useState<'select' | 'custom'>('select');
+  
+  // Custom scenario state
+  const [customDrivers, setCustomDrivers] = useState<CustomDriver[]>([]);
+  const [scenarioRaceId, setScenarioRaceId] = useState<number | null>(null);
 
-  // Load available races on mount
+  // Load available races and drivers on mount
   useEffect(() => {
     loadAvailableRaces();
+    loadDrivers();
   }, []);
 
   const loadAvailableRaces = async () => {
@@ -71,6 +136,31 @@ export default function Home() {
     }
   };
 
+  const loadDrivers = async () => {
+    setLoadingDrivers(true);
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      const response = await fetch(`${apiUrl}/drivers`);
+      if (response.ok) {
+        const data = await response.json();
+        setDrivers(data.drivers || []);
+        
+        // Initialize custom drivers with all available drivers
+        const initialDrivers: CustomDriver[] = (data.drivers || []).slice(0, 20).map((d: Driver, index: number) => ({
+          driverRef: d.driverRef,
+          driver_abbreviation: DRIVER_ABBREVIATIONS[d.driverRef] || d.driverRef.substring(0, 3).toUpperCase(),
+          team: d.current_team || 'Unknown',
+          grid_position: index + 1,
+        }));
+        setCustomDrivers(initialDrivers);
+      }
+    } catch (err) {
+      console.error('Failed to load drivers:', err);
+    } finally {
+      setLoadingDrivers(false);
+    }
+  };
+
   const handlePredict = async () => {
     setLoading(true);
     setError(null);
@@ -83,26 +173,45 @@ export default function Home() {
       if (searchMode === 'select' && selectedRaceId) {
         // Use race ID endpoint
         response = await fetch(`${apiUrl}/predict/${selectedRaceId}`);
-      } else {
-        // Use search endpoint
-        if (!raceName.trim() && searchMode === 'manual') {
-          setError('Please enter a race name or select a race');
+      } else if (searchMode === 'custom') {
+        // Use custom scenario endpoint
+        if (customDrivers.length === 0) {
+          setError('Please add at least one driver');
           setLoading(false);
           return;
         }
+
+        const gridPositions = customDrivers.map(d => d.grid_position);
+        if (new Set(gridPositions).size !== gridPositions.length) {
+          setError('Grid positions must be unique for each driver');
+          setLoading(false);
+          return;
+        }
+
+        const selectedRace = availableRaces.find(r => r.raceId === scenarioRaceId);
         
-        response = await fetch(`${apiUrl}/predict`, {
+        response = await fetch(`${apiUrl}/predict/custom`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            race_name: raceName || undefined,
-            circuit_name: circuitName || undefined,
-            race_date: raceDate || undefined,
-            race_id: selectedRaceId || undefined,
+            race_name: selectedRace?.name || undefined,
+            circuit_name: selectedRace?.circuit || undefined,
+            race_date: selectedRace?.date || undefined,
+            drivers: customDrivers.map(d => ({
+              driverRef: d.driverRef,
+              driver_abbreviation: d.driver_abbreviation,
+              team: d.team,
+              grid_position: d.grid_position,
+              recent_form: d.recent_form || undefined,
+            })),
           }),
         });
+      } else {
+        setError('Please select a mode');
+        setLoading(false);
+        return;
       }
 
       if (!response.ok) {
@@ -133,97 +242,77 @@ export default function Home() {
     <div className="min-h-screen bg-gradient-to-br from-red-50 via-white to-red-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
       <div className="container mx-auto px-4 py-12 max-w-6xl">
         {/* Header */}
-        <div className="text-center mb-12 animate-fadeIn">
-          <div className="inline-block mb-6 animate-pulse-slow">
-            <span className="text-7xl">🏎️</span>
-          </div>
-          <h1 className="text-5xl md:text-6xl font-bold text-gray-900 dark:text-white mb-4 bg-gradient-to-r from-red-600 to-red-800 bg-clip-text text-transparent">
+        <div className="text-center mb-12">
+          <h1 className="text-4xl md:text-5xl font-semibold text-gray-900 dark:text-white mb-3">
             F1 Race Predictor
           </h1>
-          <p className="text-xl md:text-2xl text-gray-600 dark:text-gray-300 mb-2">
-            Predict Formula 1 race results with AI
+          <p className="text-lg text-gray-600 dark:text-gray-400 mb-1">
+            AI-powered Formula 1 race result predictions
           </p>
-          <p className="text-sm md:text-base text-gray-500 dark:text-gray-400">
-            Select a race from the 2025 season or search manually
+          <p className="text-sm text-gray-500 dark:text-gray-500">
+            Select a race from the 2025 season or create a custom scenario
           </p>
-          <div className="mt-4 inline-flex items-center px-4 py-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-            <span className="text-blue-800 dark:text-blue-200 text-xs">
-              🤖 Predictions are generated in real-time using your trained ML model
+          <div className="mt-6 inline-flex items-center px-4 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md">
+            <span className="text-gray-700 dark:text-gray-300 text-sm">
+              Predictions generated using machine learning models
             </span>
-          </div>
-          <div className="mt-6 flex flex-wrap items-center justify-center gap-4">
-            <Link
-              href="/dashboard"
-              className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-all duration-200 transform hover:scale-105 shadow-md hover:shadow-lg"
-            >
-              📊 View Dashboard
-            </Link>
-            <Link
-              href="/drivers"
-              className="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg transition-all duration-200 transform hover:scale-105 shadow-md hover:shadow-lg"
-            >
-              👤 Driver Profiles
-            </Link>
-            <Link
-              href="/standings"
-              className="px-6 py-3 bg-yellow-600 hover:bg-yellow-700 text-white font-semibold rounded-lg transition-all duration-200 transform hover:scale-105 shadow-md hover:shadow-lg"
-            >
-              🏆 Standings
-            </Link>
-            <Link
-              href="/what-is-f1"
-              className="px-6 py-3 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-900 dark:text-white font-semibold rounded-lg transition-all duration-200 transform hover:scale-105"
-            >
-              Learn About F1
-            </Link>
           </div>
         </div>
 
         {/* Input Form */}
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 mb-8">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-8">
           {/* Mode Toggle */}
           <div className="flex gap-4 mb-6">
             <button
               onClick={() => setSearchMode('select')}
-              className={`flex-1 px-4 py-2 rounded-lg font-medium transition-all ${
+              className={`flex-1 px-4 py-2.5 rounded-md font-medium transition-all text-sm ${
                 searchMode === 'select'
-                  ? 'bg-red-600 text-white shadow-md'
+                  ? 'bg-red-600 text-white shadow-sm'
                   : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
               }`}
             >
-              📋 Select from List
+              Select from List
             </button>
             <button
-              onClick={() => setSearchMode('manual')}
-              className={`flex-1 px-4 py-2 rounded-lg font-medium transition-all ${
-                searchMode === 'manual'
-                  ? 'bg-red-600 text-white shadow-md'
+              onClick={() => setSearchMode('custom')}
+              className={`flex-1 px-4 py-2.5 rounded-md font-medium transition-all text-sm ${
+                searchMode === 'custom'
+                  ? 'bg-red-600 text-white shadow-sm'
                   : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
               }`}
             >
-              🔍 Search Manually
+              Create Custom Scenario
             </button>
           </div>
 
           <div className="space-y-6">
             {searchMode === 'select' ? (
               <div>
-                <label htmlFor="raceSelect" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
                   Select Race <span className="text-red-500">*</span>
                 </label>
                 {loadingRaces ? (
-                  <div className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700">
-                    <span className="text-gray-500">Loading races...</span>
+                  <div className="w-full h-[500px] bg-gray-100 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 flex items-center justify-center">
+                    <div className="text-gray-500 dark:text-gray-400">Loading races...</div>
                   </div>
                 ) : (
+                  <RaceMap
+                    races={availableRaces}
+                    selectedRaceId={selectedRaceId}
+                    onRaceSelect={handleRaceSelect}
+                  />
+                )}
+                <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                  Click on a marker to select a race, or use the dropdown below
+                </p>
+                {!loadingRaces && availableRaces.length > 0 && (
                   <select
-                    id="raceSelect"
                     value={selectedRaceId || ''}
                     onChange={(e) => handleRaceSelect(Number(e.target.value))}
-                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                    className="mt-3 w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-red-500 focus:border-transparent dark:bg-gray-700 dark:text-white text-sm"
                     disabled={loading}
                   >
-                    <option value="">-- Select a race --</option>
+                    <option value="">-- Or select from dropdown --</option>
                     {availableRaces.map((race) => (
                       <option key={race.raceId} value={race.raceId}>
                         {race.label}
@@ -231,67 +320,179 @@ export default function Home() {
                     ))}
                   </select>
                 )}
-                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                  Choose from available 2025 F1 races
-                </p>
               </div>
             ) : (
               <>
-                <div>
-                  <label htmlFor="raceName" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Race Name <span className="text-red-500">*</span>
+                {/* Optional Race Selection for Custom Scenario */}
+                <div className="mb-6">
+                  <label htmlFor="scenarioRace" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Race Context (Optional)
                   </label>
-                  <input
-                    id="raceName"
-                    type="text"
-                    value={raceName}
-                    onChange={(e) => setRaceName(e.target.value)}
-                    placeholder="e.g., Monaco Grand Prix, British Grand Prix"
+                  <select
+                    id="scenarioRace"
+                    value={scenarioRaceId || ''}
+                    onChange={(e) => setScenarioRaceId(e.target.value ? Number(e.target.value) : null)}
                     className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                     disabled={loading}
-                  />
+                  >
+                    <option value="">-- Select a race for context (optional) --</option>
+                    {availableRaces.map((race) => (
+                      <option key={race.raceId} value={race.raceId}>
+                        {race.label}
+                      </option>
+                    ))}
+                  </select>
                   <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                    Enter the name of the F1 race you want to predict
+                    Choose a race to provide context (circuit, date) for your custom scenario
                   </p>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label htmlFor="circuitName" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Circuit Name (Optional)
+                {/* Driver Configuration */}
+                <div className="mb-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Driver Lineup <span className="text-red-500">*</span>
                     </label>
-                    <input
-                      id="circuitName"
-                      type="text"
-                      value={circuitName}
-                      onChange={(e) => setCircuitName(e.target.value)}
-                      placeholder="e.g., Circuit de Monaco"
-                      className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                      disabled={loading}
-                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const existingRefs = new Set(customDrivers.map(d => d.driverRef));
+                        const availableDriver = drivers.find(d => !existingRefs.has(d.driverRef));
+                        if (availableDriver) {
+                          setCustomDrivers(prev => [...prev, {
+                            driverRef: availableDriver.driverRef,
+                            driver_abbreviation: DRIVER_ABBREVIATIONS[availableDriver.driverRef] || availableDriver.driverRef.substring(0, 3).toUpperCase(),
+                            team: availableDriver.current_team || 'Unknown',
+                            grid_position: prev.length + 1,
+                          }]);
+                        }
+                      }}
+                      className="px-3 py-1 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all"
+                      disabled={loading || loadingDrivers}
+                    >
+                      + Add Driver
+                    </button>
                   </div>
 
-                  <div>
-                    <label htmlFor="raceDate" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Race Date (Optional)
-                    </label>
-                    <input
-                      id="raceDate"
-                      type="date"
-                      value={raceDate}
-                      onChange={(e) => setRaceDate(e.target.value)}
-                      className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                      disabled={loading}
-                    />
-                  </div>
+                  {loadingDrivers ? (
+                    <div className="text-center py-4 text-gray-500">Loading drivers...</div>
+                  ) : (
+                    <div className="space-y-3 max-h-96 overflow-y-auto">
+                      {customDrivers.map((driver, index) => (
+                        <div
+                          key={`${driver.driverRef}-${index}`}
+                          className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-gray-50 dark:bg-gray-700/50"
+                        >
+                          <div className="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
+                            <div>
+                              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                Driver
+                              </label>
+                              <select
+                                value={driver.driverRef}
+                                onChange={(e) => {
+                                  const selectedDriver = drivers.find(d => d.driverRef === e.target.value);
+                                  if (selectedDriver) {
+                                    setCustomDrivers(prev => prev.map((d, i) => 
+                                      i === index ? {
+                                        ...d,
+                                        driverRef: selectedDriver.driverRef,
+                                        driver_abbreviation: DRIVER_ABBREVIATIONS[selectedDriver.driverRef] || selectedDriver.driverRef.substring(0, 3).toUpperCase(),
+                                        team: selectedDriver.current_team || 'Unknown',
+                                      } : d
+                                    ));
+                                  }
+                                }}
+                                className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                                disabled={loading}
+                              >
+                                {drivers.map(d => (
+                                  <option key={d.driverRef} value={d.driverRef}>
+                                    {d.driver_name}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                            <div>
+                              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                Team
+                              </label>
+                              <input
+                                type="text"
+                                value={driver.team}
+                                onChange={(e) => {
+                                  setCustomDrivers(prev => prev.map((d, i) => 
+                                    i === index ? { ...d, team: e.target.value } : d
+                                  ));
+                                }}
+                                className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                                disabled={loading}
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                Grid Position
+                              </label>
+                              <input
+                                type="number"
+                                min="1"
+                                max="20"
+                                value={driver.grid_position}
+                                onChange={(e) => {
+                                  const pos = Math.max(1, Math.min(20, parseInt(e.target.value) || 1));
+                                  setCustomDrivers(prev => prev.map((d, i) => 
+                                    i === index ? { ...d, grid_position: pos } : d
+                                  ));
+                                }}
+                                className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                                disabled={loading}
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                Recent Form (Optional)
+                              </label>
+                              <input
+                                type="number"
+                                min="1"
+                                max="20"
+                                step="0.1"
+                                value={driver.recent_form || ''}
+                                onChange={(e) => {
+                                  setCustomDrivers(prev => prev.map((d, i) => 
+                                    i === index ? { ...d, recent_form: e.target.value ? parseFloat(e.target.value) : undefined } : d
+                                  ));
+                                }}
+                                placeholder="Avg pos"
+                                className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                                disabled={loading}
+                              />
+                            </div>
+                            <div>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setCustomDrivers(prev => prev.filter((_, i) => i !== index));
+                                }}
+                                className="w-full px-3 py-1.5 text-sm bg-red-600 hover:bg-red-700 text-white rounded-lg transition-all"
+                                disabled={loading}
+                              >
+                                Remove
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </>
             )}
 
             <button
               onClick={handlePredict}
-              disabled={loading || (searchMode === 'select' && !selectedRaceId) || (searchMode === 'manual' && !raceName.trim())}
-              className="w-full bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-semibold py-4 px-6 rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+              disabled={loading || (searchMode === 'select' && !selectedRaceId) || (searchMode === 'custom' && customDrivers.length === 0)}
+              className="w-full bg-red-600 hover:bg-red-700 text-white font-medium py-3 px-6 rounded-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow-md"
             >
               {loading ? (
                 <span className="flex items-center justify-center">
@@ -299,10 +500,10 @@ export default function Home() {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  Generating prediction with AI model...
+                  Generating prediction...
                 </span>
               ) : (
-                '🚀 Get Prediction'
+                'Generate Prediction'
               )}
             </button>
           </div>
@@ -335,19 +536,46 @@ export default function Home() {
         {result && (
           <div className="space-y-8 animate-fadeIn">
             {/* Top Results Card */}
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 transform transition-all duration-300 hover:shadow-2xl">
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">
-                🏆 Prediction Results
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">
+                Prediction Results
               </h2>
 
               <div className="space-y-6">
-                <div className="bg-gradient-to-r from-yellow-50 to-yellow-100 dark:from-yellow-900/20 dark:to-yellow-800/20 rounded-lg p-6 border-2 border-yellow-300 dark:border-yellow-700">
-                  <div className="flex items-center mb-2">
-                    <span className="text-3xl mr-3">🥇</span>
-                    <div>
-                      <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Predicted Winner</p>
-                      <p className="text-2xl font-bold text-gray-900 dark:text-white">{result.predicted_winner}</p>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">{result.predicted_winner_team}</p>
+                <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-6 border border-gray-200 dark:border-gray-600">
+                  <div className="mb-4">
+                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-3">Predicted Winner</p>
+                    <div className="flex items-center gap-4">
+                      {getDriverPortrait(result.predicted_winner) && (
+                        <div className="relative w-20 h-20 rounded-full overflow-hidden border-2 border-red-600 flex-shrink-0">
+                          <Image
+                            src={`/drivers/driver_portraits/${getDriverPortrait(result.predicted_winner)}`}
+                            alt={formatDriverName(result.predicted_winner)}
+                            fill
+                            className="object-cover"
+                            unoptimized
+                          />
+                        </div>
+                      )}
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <p className="text-2xl font-semibold text-gray-900 dark:text-white">
+                            {formatDriverName(result.predicted_winner)}
+                          </p>
+                          {getTeamLogo(result.predicted_winner_team) && (
+                            <div className="relative w-8 h-8">
+                              <Image
+                                src={`/teams/${getTeamLogo(result.predicted_winner_team)}`}
+                                alt={result.predicted_winner_team}
+                                fill
+                                className="object-contain"
+                                unoptimized
+                              />
+                            </div>
+                          )}
+                        </div>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">{result.predicted_winner_team}</p>
+                      </div>
                     </div>
                   </div>
                   {result.confidence && (
@@ -368,26 +596,53 @@ export default function Home() {
 
                 {result.top_3 && result.top_3.length > 0 && (
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Top 3 Finishers</h3>
+                    <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-4">Top 3 Finishers</h3>
                     <div className="space-y-3">
-                      {result.top_3?.map((driver, index) => (
-                        <div
-                          key={index}
-                          className="flex items-center justify-between bg-gray-50 dark:bg-gray-700 rounded-lg p-4"
-                        >
-                          <div className="flex items-center">
-                            <span className="text-2xl mr-4">
-                              {index === 0 ? '🥇' : index === 1 ? '🥈' : '🥉'}
+                      {result.top_3?.map((driver, index) => {
+                        const driverRef = driver.driver;
+                        const driverPortrait = getDriverPortrait(driverRef);
+                        const teamLogo = getTeamLogo(driver.team);
+                        return (
+                          <div
+                            key={index}
+                            className="flex items-center gap-4 bg-white dark:bg-gray-800 rounded-md p-4 border border-gray-200 dark:border-gray-700"
+                          >
+                            <span className="w-10 h-10 flex items-center justify-center bg-red-600 text-white rounded-full text-base font-semibold flex-shrink-0">
+                              {index + 1}
                             </span>
-                            <div>
-                              <span className="text-lg font-medium text-gray-900 dark:text-white">
-                                {index + 1}. {driver.driver}
-                              </span>
+                            {driverPortrait && (
+                              <div className="relative w-16 h-16 rounded-full overflow-hidden border-2 border-gray-300 dark:border-gray-600 flex-shrink-0">
+                                <Image
+                                  src={`/drivers/driver_portraits/${driverPortrait}`}
+                                  alt={formatDriverName(driverRef)}
+                                  fill
+                                  className="object-cover"
+                                  unoptimized
+                                />
+                              </div>
+                            )}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="text-base font-semibold text-gray-900 dark:text-white">
+                                  {formatDriverName(driverRef)}
+                                </span>
+                                {teamLogo && (
+                                  <div className="relative w-6 h-6 flex-shrink-0">
+                                    <Image
+                                      src={`/teams/${teamLogo}`}
+                                      alt={driver.team}
+                                      fill
+                                      className="object-contain"
+                                      unoptimized
+                                    />
+                                  </div>
+                                )}
+                              </div>
                               <p className="text-sm text-gray-600 dark:text-gray-400">{driver.team}</p>
                             </div>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 )}
@@ -413,12 +668,20 @@ export default function Home() {
                           </p>
                         )}
                       </div>
-                      <a
-                        href={`/compare/${result.race_id}`}
-                        className="inline-flex items-center justify-center px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-all duration-200 transform hover:scale-105 shadow-md hover:shadow-lg"
-                      >
-                        📊 Compare with Actual Results
-                      </a>
+                      {/* Only show compare button for real races (race_id > 0) */}
+                      {result.race_id > 0 && (
+                        <a
+                          href={`/compare/${result.race_id}`}
+                          className="inline-flex items-center justify-center px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md transition-all duration-200 shadow-sm hover:shadow-md text-sm"
+                        >
+                          Compare with Actual Results
+                        </a>
+                      )}
+                      {result.race_id === 0 && (
+                        <div className="inline-flex items-center justify-center px-6 py-2.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 font-medium rounded-md text-sm">
+                          Custom Scenario (No actual results available)
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
@@ -427,9 +690,9 @@ export default function Home() {
 
             {/* Full Predictions Table */}
             {result.full_predictions && result.full_predictions.length > 0 && (
-              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 transform transition-all duration-300 hover:shadow-2xl">
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-6">
-                  📊 Full Race Predictions
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">
+                  Full Race Predictions
                 </h3>
                 <div className="overflow-x-auto">
                   <table className="w-full">
@@ -452,11 +715,39 @@ export default function Home() {
                               {pred.predicted_position}
                             </span>
                           </td>
-                          <td className="py-3 px-4 text-gray-900 dark:text-white">
-                            {pred.driver_name}
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-3">
+                              {getDriverPortrait(pred.driverRef) && (
+                                <div className="relative w-10 h-10 rounded-full overflow-hidden border border-gray-300 dark:border-gray-600 flex-shrink-0">
+                                  <Image
+                                    src={`/drivers/driver_portraits/${getDriverPortrait(pred.driverRef)}`}
+                                    alt={pred.driver_name}
+                                    fill
+                                    className="object-cover"
+                                    unoptimized
+                                  />
+                                </div>
+                              )}
+                              <span className="text-gray-900 dark:text-white font-medium">
+                                {formatDriverName(pred.driverRef)}
+                              </span>
+                            </div>
                           </td>
-                          <td className="py-3 px-4 text-gray-600 dark:text-gray-400">
-                            {pred.team}
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-2">
+                              {getTeamLogo(pred.team) && (
+                                <div className="relative w-5 h-5 flex-shrink-0">
+                                  <Image
+                                    src={`/teams/${getTeamLogo(pred.team)}`}
+                                    alt={pred.team}
+                                    fill
+                                    className="object-contain"
+                                    unoptimized
+                                  />
+                                </div>
+                              )}
+                              <span className="text-gray-600 dark:text-gray-400">{pred.team}</span>
+                            </div>
                           </td>
                           <td className="py-3 px-4 text-gray-600 dark:text-gray-400">
                             {pred.grid_position !== null && pred.grid_position !== undefined
