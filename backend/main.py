@@ -832,8 +832,8 @@ class F1Predictor:
             try:
                 pred_result = self.predict(race_id=race_id)
                 if not pred_result or "full_predictions" not in pred_result:
-            return None
-        
+                    return None
+                
                 # Convert predictions to DataFrame
                 predictions_list = pred_result["full_predictions"]
                 predictions_df = pd.DataFrame([
