@@ -5,7 +5,6 @@ Uses CatBoost ML model for predictions with CSV fallback
 """
 
 from fastapi import FastAPI, HTTPException, Query
-from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional, List, Dict
 from pathlib import Path
@@ -40,17 +39,60 @@ allowed_origins_str = os.getenv(
     "ALLOWED_ORIGINS",
     "http://localhost:3000,http://127.0.0.1:3000,http://localhost:3001"
 )
-allowed_origins = [origin.strip() for origin in allowed_origins_str.split(",")]
+allowed_origins_list = [origin.strip() for origin in allowed_origins_str.split(",")]
+
+# Support Vercel preview URLs - allow any .vercel.app domain
+# Check if we should allow Vercel previews (if "*" or "vercel.app" is mentioned)
+allow_vercel_previews = any("*" in origin or "vercel.app" in origin for origin in allowed_origins_list)
+
+# Filter out wildcard entries for exact matching
+allowed_origins = [origin for origin in allowed_origins_list if "*" not in origin]
 
 logger.info(f"CORS allowed origins: {allowed_origins}")
+if allow_vercel_previews:
+    logger.info("Vercel preview URL wildcard enabled - all *.vercel.app domains will be allowed")
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=allowed_origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# Custom CORS middleware to support Vercel preview URLs
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
+from starlette.responses import Response
+
+class CORSMiddlewareCustom(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        origin = request.headers.get("origin")
+        
+        # Check if origin is allowed
+        is_allowed = False
+        if origin:
+            # Exact match
+            if origin in allowed_origins:
+                is_allowed = True
+            # Vercel preview URLs (if wildcard enabled)
+            elif allow_vercel_previews and origin.endswith(".vercel.app"):
+                is_allowed = True
+        
+        # Handle preflight requests
+        if request.method == "OPTIONS":
+            response = Response()
+            if is_allowed:
+                response.headers["Access-Control-Allow-Origin"] = origin
+                response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+                response.headers["Access-Control-Allow-Headers"] = "*"
+                response.headers["Access-Control-Allow-Credentials"] = "true"
+                response.headers["Access-Control-Max-Age"] = "3600"
+            return response
+        
+        # Process request
+        response = await call_next(request)
+        
+        # Add CORS headers to response
+        if is_allowed and origin:
+            response.headers["Access-Control-Allow-Origin"] = origin
+            response.headers["Access-Control-Allow-Credentials"] = "true"
+        
+        return response
+
+app.add_middleware(CORSMiddlewareCustom)
 
 # Data paths
 ROOT = Path(__file__).parent
