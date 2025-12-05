@@ -737,7 +737,7 @@ class F1Predictor:
             # Check if metadata is available
             if self.meta.empty:
                 logger.warning("Metadata is empty, cannot get race info")
-            return None
+                return None
         
             # Check if raceId column exists
             if "raceId" not in self.meta.columns:
@@ -838,8 +838,8 @@ class F1Predictor:
                 predictions_list = pred_result["full_predictions"]
                 predictions_df = pd.DataFrame([
                     {
-                        'driverRef': pred.driverRef,
-                        'pred_pos': pred.predicted_position
+                        'driverRef': pred.driverRef if hasattr(pred, 'driverRef') else pred.get('driverRef', 'Unknown'),
+                        'pred_pos': pred.predicted_position if hasattr(pred, 'predicted_position') else pred.get('predicted_position', 0)
                     }
                     for pred in predictions_list
                 ])
@@ -859,37 +859,37 @@ class F1Predictor:
                 on='driverRef',
                 how='inner'
             )
-        
+            
             if merged.empty:
                 logger.warning(f"No matching drivers between predictions and actual results for race {race_id}")
-            return None
-        
-        # Calculate metrics
+                return None
+            
+            # Calculate metrics
             merged["error"] = abs(merged["pred_pos"] - merged["finish_pos"])
             mae = merged["error"].mean()
             rmse = (merged["error"] ** 2).mean() ** 0.5
-        
-        # Count exact matches
+            
+            # Count exact matches
             exact_matches = (merged["pred_pos"] == merged["finish_pos"]).sum()
             exact_match_rate = exact_matches / len(merged)
-        
-        # Count within 1 position
+            
+            # Count within 1 position
             within_one = (merged["error"] <= 1).sum()
             within_one_rate = within_one / len(merged)
-        
-        # Count within 3 positions
+            
+            # Count within 3 positions
             within_three = (merged["error"] <= 3).sum()
             within_three_rate = within_three / len(merged)
-        
-        return {
-            "mae": round(mae, 2),
-            "rmse": round(rmse, 2),
-            "exact_matches": int(exact_matches),
-            "exact_match_rate": round(exact_match_rate, 3),
-            "within_one": int(within_one),
-            "within_one_rate": round(within_one_rate, 3),
-            "within_three": int(within_three),
-            "within_three_rate": round(within_three_rate, 3),
+            
+            return {
+                "mae": round(mae, 2),
+                "rmse": round(rmse, 2),
+                "exact_matches": int(exact_matches),
+                "exact_match_rate": round(exact_match_rate, 3),
+                "within_one": int(within_one),
+                "within_one_rate": round(within_one_rate, 3),
+                "within_three": int(within_three),
+                "within_three_rate": round(within_three_rate, 3),
                 "total_drivers": len(merged)
             }
         except Exception as e:
@@ -1657,16 +1657,16 @@ async def compare_prediction_actual(race_id: int):
         actual_results = None
         if actual_df is not None and not actual_df.empty:
             try:
-            actual_results = [
-                ActualResult(
-                    driverRef=str(row.get("driverRef", "Unknown")),
-                    driver_name=str(row.get("driverRef", "Unknown")),
-                    team=str(row.get("team", "Unknown")),
-                    finish_position=int(row.get("finish_pos", 0)),
+                actual_results = [
+                    ActualResult(
+                        driverRef=str(row.get("driverRef", "Unknown")),
+                        driver_name=str(row.get("driverRef", "Unknown")),
+                        team=str(row.get("team", "Unknown")),
+                        finish_position=int(row.get("finish_pos", 0)),
                         grid_position=int(row.get("grid", 0)) if pd.notna(row.get("grid")) and row.get("grid") is not None else None
-                )
-                for _, row in actual_df.iterrows()
-            ]
+                    )
+                    for _, row in actual_df.iterrows()
+                ]
             except Exception as e:
                 logger.warning(f"Error formatting actual results: {e}")
                 actual_results = None
@@ -1674,7 +1674,7 @@ async def compare_prediction_actual(race_id: int):
         # Get accuracy metrics (only if we have both predictions and actual results)
         accuracy = None
         if actual_results:
-        accuracy = predictor.get_prediction_accuracy(race_id)
+            accuracy = predictor.get_prediction_accuracy(race_id)
         
         return ComparisonResponse(
             race_id=race_id,
@@ -1722,39 +1722,39 @@ async def get_statistics():
         
         # Try to get statistics from CSV data if available
         if not predictor.flat.empty and "raceId" in predictor.flat.columns:
-        races_with_predictions = predictor.flat["raceId"].nunique()
-        total_predictions = len(predictor.flat)
-        
-        # Top drivers by predicted wins
+            races_with_predictions = predictor.flat["raceId"].nunique()
+            total_predictions = len(predictor.flat)
+            
+            # Top drivers by predicted wins
             top_drivers = []
             top_teams = []
             
-        if "pred_pos" in predictor.flat.columns:
-            winners = predictor.flat[predictor.flat["pred_pos"] == 1]
+            if "pred_pos" in predictor.flat.columns:
+                winners = predictor.flat[predictor.flat["pred_pos"] == 1]
                 if not winners.empty:
                     if "driverRef" in predictor.flat.columns:
-            driver_wins = winners["driverRef"].value_counts().head(10)
-            top_drivers = [
-                {"driver": str(driver), "predicted_wins": int(wins)}
-                for driver, wins in driver_wins.items()
-            ]
-        
+                        driver_wins = winners["driverRef"].value_counts().head(10)
+                        top_drivers = [
+                            {"driver": str(driver), "predicted_wins": int(wins)}
+                            for driver, wins in driver_wins.items()
+                        ]
+                    
                     if "team" in predictor.flat.columns:
-            team_wins = winners["team"].value_counts().head(10)
-            top_teams = [
-                {"team": str(team), "predicted_wins": int(wins)}
-                for team, wins in team_wins.items()
-            ]
+                        team_wins = winners["team"].value_counts().head(10)
+                        top_teams = [
+                            {"team": str(team), "predicted_wins": int(wins)}
+                            for team, wins in team_wins.items()
+                        ]
             
             avg_confidence = 0.82  # Default confidence for CSV predictions
-        
-        return StatisticsResponse(
-            total_races=races_with_predictions,
-            total_predictions=total_predictions,
-            average_confidence=avg_confidence,
-            top_drivers=top_drivers,
-            top_teams=top_teams
-        )
+            
+            return StatisticsResponse(
+                total_races=races_with_predictions,
+                total_predictions=total_predictions,
+                average_confidence=avg_confidence,
+                top_drivers=top_drivers,
+                top_teams=top_teams
+            )
         
         # If no CSV data, provide basic statistics from metadata
         # Generating predictions for all races would be too slow
