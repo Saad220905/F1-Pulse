@@ -44,72 +44,205 @@ interface RaceMapProps {
   onRaceSelect: (raceId: number) => void;
 }
 
-// F1 Circuit coordinates mapping (approximate locations)
+// F1 Circuit coordinates mapping (accurate locations)
+// Includes multiple name variations for each circuit
 const CIRCUIT_COORDINATES: Record<string, [number, number]> = {
-  'Bahrain': [26.0325, 50.5106],
+  // Bahrain
+  'Bahrain International Circuit': [26.0325, 50.510556],
+  'Bahrain': [26.0325, 50.510556],
+  'Sakhir': [26.0325, 50.510556],
+  
+  // Saudi Arabia
+  'Jeddah Corniche Circuit': [21.6319, 39.1044],
   'Saudi Arabia': [21.6319, 39.1044],
-  'Australia': [-37.8497, 144.9680],
+  'Jeddah': [21.6319, 39.1044],
+  
+  // Australia
+  'Albert Park Circuit': [-37.849722, 144.968333],
+  'Australia': [-37.849722, 144.968333],
+  'Melbourne': [-37.849722, 144.968333],
+  
+  // China
+  'Shanghai International Circuit': [31.3389, 121.2200],
   'China': [31.3389, 121.2200],
-  'Japan': [34.8431, 136.5412],
+  'Shanghai': [31.3389, 121.2200],
+  
+  // Japan
+  'Suzuka International Racing Course': [34.843056, 136.540556],
+  'Japan': [34.843056, 136.540556],
+  'Suzuka': [34.843056, 136.540556],
+  
+  // Miami
+  'Miami International Autodrome': [25.9581, -80.2389],
   'Miami': [25.9581, -80.2389],
-  'Italy': [44.3439, 11.7167],
-  'Monaco': [43.7347, 7.4206],
-  'Spain': [41.5700, 2.2611],
-  'Canada': [45.5017, -73.5228],
+  
+  // Imola (Italy)
+  'Autodromo Enzo e Dino Ferrari': [44.3439, 11.7167],
+  'Imola': [44.3439, 11.7167],
+  'Emilia Romagna': [44.3439, 11.7167],
+  
+  // Monaco
+  'Circuit de Monaco': [43.734722, 7.420556],
+  'Monaco': [43.734722, 7.420556],
+  
+  // Spain
+  'Circuit de Barcelona-Catalunya': [41.57, 2.261111],
+  'Spain': [41.57, 2.261111],
+  'Barcelona': [41.57, 2.261111],
+  'Catalunya': [41.57, 2.261111],
+  
+  // Canada
+  'Circuit Gilles-Villeneuve': [45.505833, -73.526667],
+  'Canada': [45.505833, -73.526667],
+  'Montreal': [45.505833, -73.526667],
+  
+  // Austria
+  'Red Bull Ring': [47.2197, 14.7647],
   'Austria': [47.2197, 14.7647],
-  'United Kingdom': [52.0786, -1.0169],
-  'Hungary': [47.5789, 19.2486],
-  'Belgium': [50.4372, 5.9714],
-  'Netherlands': [52.3788, 4.5402],
-  'Italy (Monza)': [45.6156, 9.2811],
+  'Spielberg': [47.2197, 14.7647],
+  
+  // United Kingdom
+  'Silverstone Circuit': [52.071, -1.016],
+  'United Kingdom': [52.071, -1.016],
+  'Silverstone': [52.071, -1.016],
+  'Great Britain': [52.071, -1.016],
+  
+  // Hungary
+  'Hungaroring': [47.578889, 19.248611],
+  'Hungary': [47.578889, 19.248611],
+  'Budapest': [47.578889, 19.248611],
+  
+  // Belgium
+  'Circuit de Spa-Francorchamps': [50.437222, 5.971389],
+  'Belgium': [50.437222, 5.971389],
+  'Spa': [50.437222, 5.971389],
+  'Spa-Francorchamps': [50.437222, 5.971389],
+  
+  // Netherlands
+  'Circuit Zandvoort': [52.3888, 4.5409],
+  'Netherlands': [52.3888, 4.5409],
+  'Zandvoort': [52.3888, 4.5409],
+  'Dutch': [52.3888, 4.5409],
+  
+  // Italy (Monza)
+  'Autodromo Nazionale Monza': [45.620556, 9.289444],
+  'Monza': [45.620556, 9.289444],
+  'Italy (Monza)': [45.620556, 9.289444],
+  
+  // Azerbaijan
+  'Baku City Circuit': [40.3725, 49.8533],
   'Azerbaijan': [40.3725, 49.8533],
-  'Singapore': [1.2914, 103.8640],
-  'United States': [30.1327, -97.6351],
+  'Baku': [40.3725, 49.8533],
+  
+  // Singapore
+  'Marina Bay Street Circuit': [1.291403, 103.864147],
+  'Singapore': [1.291403, 103.864147],
+  'Marina Bay': [1.291403, 103.864147],
+  
+  // United States (COTA - Austin)
+  'Circuit of the Americas': [30.1328, -97.6411],
+  'COTA': [30.1328, -97.6411],
+  'Austin': [30.1328, -97.6411],
+  'Texas': [30.1328, -97.6411],
+  
+  // United States (Las Vegas)
+  'Las Vegas Strip Circuit': [36.1017, -115.1605],
+  'Las Vegas': [36.1017, -115.1605],
+  'Vegas': [36.1017, -115.1605],
+  'Nevada': [36.1017, -115.1605],
+  
+  // Mexico
+  'Autódromo Hermanos Rodríguez': [19.4042, -99.0907],
   'Mexico': [19.4042, -99.0907],
-  'Brazil': [-23.7036, -46.6997],
+  'Mexico City': [19.4042, -99.0907],
+  
+  // Brazil
+  'Autódromo José Carlos Pace': [-23.703611, -46.699722],
+  'Brazil': [-23.703611, -46.699722],
+  'São Paulo': [-23.703611, -46.699722],
+  'Interlagos': [-23.703611, -46.699722],
+  
+  // Qatar
+  'Lusail International Circuit': [25.4901, 51.4542],
   'Qatar': [25.4901, 51.4542],
-  'Abu Dhabi': [24.4672, 54.6031],
+  'Lusail': [25.4901, 51.4542],
+  
+  // Abu Dhabi
+  'Yas Marina Circuit': [24.467222, 54.603056],
+  'Abu Dhabi': [24.467222, 54.603056],
+  'Yas Marina': [24.467222, 54.603056],
+  'United Arab Emirates': [24.467222, 54.603056],
 };
 
-// Fallback coordinates by country
+// Fallback coordinates by country (centered on major city or circuit location)
 const COUNTRY_COORDINATES: Record<string, [number, number]> = {
-  'Bahrain': [26.0325, 50.5106],
+  'Bahrain': [26.0325, 50.510556],
   'Saudi Arabia': [21.6319, 39.1044],
-  'Australia': [-37.8497, 144.9680],
+  'Australia': [-37.849722, 144.968333],
   'China': [31.3389, 121.2200],
-  'Japan': [34.8431, 136.5412],
-  'United States': [39.8283, -98.5795],
-  'Italy': [44.3439, 11.7167],
-  'Monaco': [43.7347, 7.4206],
-  'Spain': [41.5700, 2.2611],
-  'Canada': [45.5017, -73.5228],
+  'Japan': [34.843056, 136.540556],
+  'United States': [30.1328, -97.6411], // COTA (Austin) location
+  'Italy': [44.3439, 11.7167], // Imola location
+  'Monaco': [43.734722, 7.420556],
+  'Spain': [41.57, 2.261111],
+  'Canada': [45.505833, -73.526667],
   'Austria': [47.2197, 14.7647],
-  'United Kingdom': [52.0786, -1.0169],
-  'Hungary': [47.5789, 19.2486],
-  'Belgium': [50.4372, 5.9714],
-  'Netherlands': [52.3788, 4.5402],
+  'United Kingdom': [52.071, -1.016],
+  'Hungary': [47.578889, 19.248611],
+  'Belgium': [50.437222, 5.971389],
+  'Netherlands': [52.3888, 4.5409],
   'Azerbaijan': [40.3725, 49.8533],
-  'Singapore': [1.2914, 103.8640],
+  'Singapore': [1.291403, 103.864147],
   'Mexico': [19.4042, -99.0907],
-  'Brazil': [-23.7036, -46.6997],
+  'Brazil': [-23.703611, -46.699722],
   'Qatar': [25.4901, 51.4542],
-  'United Arab Emirates': [24.4672, 54.6031],
+  'United Arab Emirates': [24.467222, 54.603056],
 };
 
 function getRaceCoordinates(race: RaceInfo): [number, number] {
-  // Try circuit name first
-  if (CIRCUIT_COORDINATES[race.circuit]) {
-    return CIRCUIT_COORDINATES[race.circuit];
+  // Helper function for case-insensitive lookup
+  const findKey = (searchValue: string, mapping: Record<string, [number, number]>): [number, number] | null => {
+    if (!searchValue) return null;
+    
+    // Exact match (case-insensitive)
+    const lowerSearch = searchValue.toLowerCase();
+    for (const [key, coords] of Object.entries(mapping)) {
+      if (key.toLowerCase() === lowerSearch) {
+        return coords;
+      }
+    }
+    
+    // Partial match (case-insensitive) - check if search value contains key or vice versa
+    for (const [key, coords] of Object.entries(mapping)) {
+      const lowerKey = key.toLowerCase();
+      if (lowerSearch.includes(lowerKey) || lowerKey.includes(lowerSearch)) {
+        return coords;
+      }
+    }
+    
+    return null;
+  };
+  
+  // Try circuit name first (with variations)
+  const circuitMatch = findKey(race.circuit, CIRCUIT_COORDINATES);
+  if (circuitMatch) {
+    return circuitMatch;
   }
   
   // Try location
-  if (CIRCUIT_COORDINATES[race.location]) {
-    return CIRCUIT_COORDINATES[race.location];
+  const locationMatch = findKey(race.location, CIRCUIT_COORDINATES);
+  if (locationMatch) {
+    return locationMatch;
   }
   
-  // Try country
+  // Try country (exact match first, then fallback)
   if (COUNTRY_COORDINATES[race.country]) {
     return COUNTRY_COORDINATES[race.country];
+  }
+  
+  const countryMatch = findKey(race.country, COUNTRY_COORDINATES);
+  if (countryMatch) {
+    return countryMatch;
   }
   
   // Default fallback (center of world)
